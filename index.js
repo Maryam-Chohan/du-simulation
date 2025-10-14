@@ -5,7 +5,7 @@ const app = express();
 
 app.use(express.json());
 
-// Health check endpoint for deployment (must be before static middleware)
+// Health check endpoint for deployment
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', service: 'du Customer Simulation Platform' });
 });
@@ -19,7 +19,7 @@ const openai = new OpenAI({
     'HTTP-Referer': 'https://replit.com',
     'X-Title': 'du Customer Simulation Platform'
   },
-  timeout: 30000  // 30 second timeout
+  timeout: 30000
 });
 
 const PERSONAS = {
@@ -130,11 +130,19 @@ const SCENARIOS = {
   }
 };
 
+// Store conversation histories in memory with better tracking
 let conversationHistories = {};
 
 app.post('/ask-client', async (req, res) => {
   try {
     const { message, persona, scenario, sessionId, isFirstMessage } = req.body;
+
+    console.log('=== REQUEST DEBUG ===');
+    console.log('sessionId:', sessionId);
+    console.log('isFirstMessage:', isFirstMessage);
+    console.log('message:', message?.substring(0, 50));
+    console.log('Current sessions:', Object.keys(conversationHistories));
+    console.log('Session history length:', conversationHistories[sessionId]?.length || 0);
 
     if (!PERSONAS[persona]) {
       return res.status(400).json({ error: 'Invalid persona' });
@@ -144,16 +152,11 @@ app.post('/ask-client', async (req, res) => {
       return res.status(400).json({ error: 'Invalid scenario' });
     }
 
-    const conversationId = sessionId || `${persona}-${scenario}-${Date.now()}`;
-
-    if (!conversationHistories[conversationId]) {
-      conversationHistories[conversationId] = [];
-    }
-
+    // Handle first message - just return initial complaint
     if (isFirstMessage) {
-      conversationHistories[conversationId] = [];
+      console.log('First message - initializing conversation');
+      conversationHistories[sessionId] = [];
       
-      // For first message, just return the scenario's initial complaint
       const clientResponse = SCENARIOS[scenario].initialComplaint;
       
       res.json({
@@ -167,16 +170,23 @@ app.post('/ask-client', async (req, res) => {
           strengths: "",
           improvements: ""
         },
-        sessionId: conversationId
+        sessionId: sessionId
       });
       return;
     }
 
-    // For subsequent messages, use AI to generate customer response
-    let messages = [
-      {
-        role: "system",
-        content: `You are a ${PERSONAS[persona].name} in Dubai contacting du Telecom about: ${SCENARIOS[scenario].description}
+    // Initialize history if it doesn't exist
+    if (!conversationHistories[sessionId]) {
+      console.log('Initializing missing conversation history');
+      conversationHistories[sessionId] = [];
+    }
+
+    // Build the conversation context with full history
+    const conversationContext = conversationHistories[sessionId]
+      .map(msg => `${msg.role === 'user' ? 'Employee' : 'Customer'}: ${msg.content}`)
+      .join('\n');
+
+    const systemMessage = `You are a ${PERSONAS[persona].name} in Dubai contacting du Telecom about: ${SCENARIOS[scenario].description}
 
 GENERAL RULES:
 - You are ALWAYS the customer; the learner is ALWAYS the du employee.
@@ -195,53 +205,60 @@ RESPONSE REQUIREMENTS:
 - Keep responses SHORT (1-3 sentences maximum)
 - React specifically to what the du employee just said
 - Vary your responses - never repeat the same phrases
-- Continue the conversation naturally until your issue is resolved`
-      }
-    ];
+- Continue the conversation naturally until your issue is resolved
 
-    messages = messages.concat(conversationHistories[conversationId]);
-    messages.push({
-      role: "user",
-      content: message
-    });
+PREVIOUS CONVERSATION:
+${conversationContext || 'This is the start of the conversation.'}`;
+
+    console.log('Sending to AI model...');
 
     const completion = await openai.chat.completions.create({
       model: "deepseek/deepseek-chat",
-      messages: messages,
+      messages: [
+        {
+          role: "system",
+          content: systemMessage
+        },
+        {
+          role: "user",
+          content: message
+        }
+      ],
       temperature: 0.7,
       max_tokens: 300,
       top_p: 0.9
     });
 
-    const clientResponse = completion.choices[0]?.message?.content || "The customer seems momentarily silent, waiting for your reply.";
+    const clientResponse = completion.choices[0]?.message?.content || "I'm waiting for your response.";
 
-    const timestamp = new Date().toISOString();
-    conversationHistories[conversationId].push(
-      { role: "user", content: message, timestamp: timestamp },
-      { role: "assistant", content: clientResponse, timestamp: timestamp }
+    console.log('AI Response:', clientResponse.substring(0, 50));
+
+    // Store both messages in history
+    conversationHistories[sessionId].push(
+      { role: "user", content: message },
+      { role: "assistant", content: clientResponse }
     );
 
-    const evaluation = {
-      empathy: 0,
-      professionalism: 0,
-      resolutionStrategy: 0,
-      customerRetention: 0,
-      feedback: "",
-      strengths: "",
-      improvements: ""
-    };
+    console.log('Updated history length:', conversationHistories[sessionId].length);
 
     res.json({
       response: clientResponse,
-      evaluation: evaluation,
-      sessionId: conversationId
+      evaluation: {
+        empathy: 0,
+        professionalism: 0,
+        resolutionStrategy: 0,
+        customerRetention: 0,
+        feedback: "",
+        strengths: "",
+        improvements: ""
+      },
+      sessionId: sessionId
     });
 
   } catch (error) {
-    console.error('Error in /ask-client:', error.message || error);
+    console.error('Error in /ask-client:', error.message);
     
-    const { sessionId: existingSessionId, persona, scenario } = req.body;
-    const conversationId = existingSessionId || `${persona}-${scenario}-${Date.now()}`;
+    const { sessionId, persona, scenario } = req.body;
     
     const fallbackResponses = [
       'Could someone please assist me?',
@@ -265,7 +282,7 @@ RESPONSE REQUIREMENTS:
         strengths: "",
         improvements: ""
       },
-      sessionId: conversationId
+      sessionId: sessionId
     });
   }
 });
@@ -347,14 +364,6 @@ app.post('/end-conversation', (req, res) => {
     });
   }
   
-  const lowestMetric = metrics.reduce((prev, current) => (prev.score < current.score) ? prev : current);
-  if (lowestMetric.score < 75 && recommendations.length < 3) {
-    recommendations.push({
-      title: `Focus on ${lowestMetric.name}`,
-      action: `Practice specific techniques to improve your ${lowestMetric.name.toLowerCase()} in customer interactions`
-    });
-  }
-  
   delete conversationHistories[sessionId];
   
   res.json({
@@ -372,7 +381,7 @@ app.get('/scenarios', (req, res) => {
   res.json(SCENARIOS);
 });
 
-// Microsoft Edge TTS endpoint with persona-specific voices (FREE, no API key required)
+// Microsoft Edge TTS endpoint
 app.post('/text-to-speech', async (req, res) => {
   try {
     const { text, persona } = req.body;
