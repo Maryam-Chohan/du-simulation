@@ -18,7 +18,8 @@ const openai = new OpenAI({
   defaultHeaders: {
     'HTTP-Referer': 'https://replit.com',
     'X-Title': 'du Customer Simulation Platform'
-  }
+  },
+  timeout: 30000  // 30 second timeout
 });
 
 const PERSONAS = {
@@ -26,31 +27,78 @@ const PERSONAS = {
     name: "Angry Customer",
     description: "Frustrated and demanding immediate resolution",
     avatar: "angry.png",
-    systemPrompt: ``
+    systemPrompt: `Tone & Behavior:
+- Frustrated and demanding, short and sharp, but respectful.
+- Does not calm down immediately; calms gradually after several adequate responses.
+- Expects tangible, immediate action.
+
+Persona-Specific Reactions:
+- Escalates, expresses dissatisfaction, or demands action if the learner's response is inadequate.
+- Avoid long, overly polite explanations; responses should reflect frustration and urgency.
+
+Example responses:
+"Your last response is not enough. I need this resolved today."
+"Yes? That's not enough. I need this fixed now."`
   },
   Polite: {
     name: "Polite Customer",
     description: "Respectful and patient, seeking understanding",
     avatar: "polite.png",
-    systemPrompt: ``
+    systemPrompt: `Tone & Behavior:
+- Friendly, patient, and understanding.
+- Appreciates proactive communication, clarity, and timely solutions.
+- Provides constructive feedback rather than complaints.
+
+Persona-Specific Reactions:
+- Acknowledges politely and provides constructive feedback or asks for clarification.
+
+Example responses:
+"Thank you. Could you please check the activation status again?"
+"I appreciate your help. Can you provide an estimated timeline?"`
   },
   Impatient: {
     name: "Impatient Customer",
     description: "In a hurry, wants quick solutions",
     avatar: "impatient.png",
-    systemPrompt: ``
+    systemPrompt: `Tone & Behavior:
+- Short-tempered and in a hurry.
+- Expects immediate action and escalates quickly.
+
+Persona-Specific Reactions:
+- Reacts with urgency or frustration if the response is slow or insufficient.
+
+Example responses:
+"I need this fixed now. What is the delay?"
+"Yes, and? I need specifics. When exactly will this be done?"`
   },
   Confused: {
     name: "Confused Customer",
     description: "Uncertain and needs clear guidance",
     avatar: "confused.png",
-    systemPrompt: ``
+    systemPrompt: `Tone & Behavior:
+- Unsure about processes or service details.
+- Frequently asks clarifying questions.
+- Needs patient guidance.
+
+Persona-Specific Reactions:
+- Asks clarifying questions if the response isn't clear.
+
+Example responses:
+"I am not sure why it is still not working. Can you explain what I need to do?"
+"Yes? I am not sure what that means. Can you explain what will happen next?"`
   },
   VIP: {
     name: "VIP Customer",
     description: "High-value business client with high expectations",
     avatar: "polite.png",
-    systemPrompt: ``
+    systemPrompt: `Tone & Behavior:
+- Professional and expects premium service.
+- Confident and clear in communication.
+- High expectations for service quality.
+
+Persona-Specific Reactions:
+- Expresses dissatisfaction professionally if service falls short.
+- Acknowledges excellent service when provided.`
   }
 };
 
@@ -102,91 +150,6 @@ app.post('/ask-client', async (req, res) => {
       conversationHistories[conversationId] = [];
     }
 
-    const personaInstructions = {
-      Angry: `Tone & Behavior:
-- Frustrated and demanding, short and sharp, but respectful.
-- Does not calm down immediately; calms gradually after several adequate responses.
-- Expects tangible, immediate action.
-
-Persona-Specific Reactions:
-- Escalates, expresses dissatisfaction, or demands action if the learner's response is inadequate.
-- Avoid long, overly polite explanations; responses should reflect frustration and urgency.
-
-Example responses:
-"Your last response is not enough. I need this resolved today."
-"Yes? That's not enough. I need this fixed now."`,
-
-      Polite: `Tone & Behavior:
-- Friendly, patient, and understanding.
-- Appreciates proactive communication, clarity, and timely solutions.
-- Provides constructive feedback rather than complaints.
-
-Persona-Specific Reactions:
-- Acknowledges politely and provides constructive feedback or asks for clarification.
-
-Example responses:
-"Thank you. Could you please check the activation status again?"
-"I appreciate your help. Can you provide an estimated timeline?"`,
-
-      Impatient: `Tone & Behavior:
-- Short-tempered and in a hurry.
-- Expects immediate action and escalates quickly.
-
-Persona-Specific Reactions:
-- Reacts with urgency or frustration if the response is slow or insufficient.
-
-Example responses:
-"I need this fixed now. What is the delay?"
-"Yes, and? I need specifics. When exactly will this be done?"`,
-
-      Confused: `Tone & Behavior:
-- Unsure about processes or service details.
-- Frequently asks clarifying questions.
-- Needs patient guidance.
-
-Persona-Specific Reactions:
-- Asks clarifying questions if the response isn't clear.
-
-Example responses:
-"I am not sure why it is still not working. Can you explain what I need to do?"
-"Yes? I am not sure what that means. Can you explain what will happen next?"`,
-
-      VIP: `Tone & Behavior:
-- Professional and expects premium service.
-- Confident and clear in communication.
-- High expectations for service quality.
-
-Persona-Specific Reactions:
-- Expresses dissatisfaction professionally if service falls short.
-- Acknowledges excellent service when provided.`
-    };
-
-    let messages = [
-      {
-        role: "system",
-        content: `You are a ${PERSONAS[persona].name} in Dubai contacting du Telecom about: ${SCENARIOS[scenario].description}
-
-GENERAL RULES:
-- You are ALWAYS the customer; the learner is ALWAYS the du employee.
-- Customer replies should be full sentences with proper punctuation.
-- Do NOT use commas, asterisks, brackets, or quotation marks in your responses.
-- Emphasize words in bold only when required using <strong> tags.
-- Ensure Dubai-specific cultural and social etiquette in all responses.
-- Conversations must be realistic, professional, and immersive.
-- Responses should be concise; avoid long, overly polite or formal statements that don't match the persona's tone.
-- Responses must adapt dynamically to the learner's replies; do not repeat the same line or default to pre-set templates.
-
-PERSONA BEHAVIOR:
-${personaInstructions[persona]}
-
-RESPONSE REQUIREMENTS:
-- Keep responses SHORT (1-3 sentences maximum)
-- React specifically to what the du employee just said
-- Vary your responses - never repeat the same phrases
-- Continue the conversation naturally until your issue is resolved`
-      }
-    ];
-
     if (isFirstMessage) {
       conversationHistories[conversationId] = [];
       
@@ -210,6 +173,32 @@ RESPONSE REQUIREMENTS:
     }
 
     // For subsequent messages, use AI to generate customer response
+    let messages = [
+      {
+        role: "system",
+        content: `You are a ${PERSONAS[persona].name} in Dubai contacting du Telecom about: ${SCENARIOS[scenario].description}
+
+GENERAL RULES:
+- You are ALWAYS the customer; the learner is ALWAYS the du employee.
+- Customer replies should be full sentences with proper punctuation.
+- Do NOT use commas, asterisks, brackets, or quotation marks in your responses.
+- Emphasize words in bold only when required using <strong> tags.
+- Ensure Dubai-specific cultural and social etiquette in all responses.
+- Conversations must be realistic, professional, and immersive.
+- Responses should be concise; avoid long, overly polite or formal statements that don't match the persona's tone.
+- Responses must adapt dynamically to the learner's replies; do not repeat the same line or default to pre-set templates.
+
+PERSONA BEHAVIOR:
+${PERSONAS[persona].systemPrompt}
+
+RESPONSE REQUIREMENTS:
+- Keep responses SHORT (1-3 sentences maximum)
+- React specifically to what the du employee just said
+- Vary your responses - never repeat the same phrases
+- Continue the conversation naturally until your issue is resolved`
+      }
+    ];
+
     messages = messages.concat(conversationHistories[conversationId]);
     messages.push({
       role: "user",
@@ -219,9 +208,9 @@ RESPONSE REQUIREMENTS:
     const completion = await openai.chat.completions.create({
       model: "deepseek/deepseek-chat",
       messages: messages,
-      temperature: 1.0,
-      max_tokens: 500,
-      top_p: 0.95
+      temperature: 0.7,
+      max_tokens: 300,
+      top_p: 0.9
     });
 
     const clientResponse = completion.choices[0]?.message?.content || "The customer seems momentarily silent, waiting for your reply.";
@@ -232,7 +221,6 @@ RESPONSE REQUIREMENTS:
       { role: "assistant", content: clientResponse, timestamp: timestamp }
     );
 
-    // Simple evaluation placeholder (real evaluation happens in final report)
     const evaluation = {
       empathy: 0,
       professionalism: 0,
@@ -251,13 +239,10 @@ RESPONSE REQUIREMENTS:
 
   } catch (error) {
     console.error('Error in /ask-client:', error.message || error);
-    console.error('Full error details:', JSON.stringify(error, null, 2));
     
-    // Return error status to notify user instead of silent fallback
     const { sessionId: existingSessionId, persona, scenario } = req.body;
     const conversationId = existingSessionId || `${persona}-${scenario}-${Date.now()}`;
     
-    // Generate varied fallback responses instead of same message
     const fallbackResponses = [
       'Could someone please assist me?',
       'Hello? Is anyone there to help?',
@@ -269,7 +254,7 @@ RESPONSE REQUIREMENTS:
     
     res.status(503).json({ 
       error: true,
-      errorMessage: `AI model unavailable: ${error.message}. Please check your API key or try a different model.`,
+      errorMessage: `Service temporarily unavailable. Please try again.`,
       response: randomFallback,
       evaluation: {
         empathy: 0,
@@ -290,43 +275,34 @@ app.post('/end-conversation', (req, res) => {
   const { sessionId, persona, scenario } = req.body;
   const conversationHistory = conversationHistories[sessionId] || [];
   
-  // Analyze conversation
   const userMessages = conversationHistory.filter(m => m.role === 'user');
   
-  // Calculate scores based on conversation analysis
   let empathy = 50, professionalism = 50, resolution = 50, retention = 50;
   
   userMessages.forEach(msg => {
     const text = msg.content.toLowerCase();
     
-    // Empathy indicators
     if (text.includes('understand') || text.includes('sorry') || text.includes('apologize')) empathy += 8;
     if (text.includes('feel') || text.includes('frustrat')) empathy += 6;
     
-    // Professionalism indicators
     if (text.includes('please') || text.includes('thank')) professionalism += 6;
     if (msg.content.length > 40) professionalism += 4;
     if (!text.includes('?') && msg.content.length > 20) professionalism += 5;
     
-    // Resolution indicators
     if (text.includes('will') || text.includes('can help') || text.includes('resolve')) resolution += 8;
     if (text.includes('fix') || text.includes('solution')) resolution += 7;
     
-    // Retention indicators
     if (text.includes('assist') || text.includes('support')) retention += 6;
     if (text.includes('follow up') || text.includes('contact')) retention += 7;
   });
   
-  // Cap scores at 100
   empathy = Math.min(100, empathy);
   professionalism = Math.min(100, professionalism);
   resolution = Math.min(100, resolution);
   retention = Math.min(100, retention);
   
-  // Calculate overall score
   const overallScore = Math.round((empathy * 0.25 + professionalism * 0.25 + resolution * 0.30 + retention * 0.20));
   
-  // Generate metrics
   const metrics = [
     { name: 'Empathy', score: empathy },
     { name: 'Professionalism', score: professionalism },
@@ -334,7 +310,6 @@ app.post('/end-conversation', (req, res) => {
     { name: 'Customer Retention Impact', score: retention }
   ];
   
-  // Generate actionable recommendations
   const recommendations = [];
   
   if (empathy < 75) {
@@ -365,7 +340,6 @@ app.post('/end-conversation', (req, res) => {
     });
   }
   
-  // If all scores are good, add general improvement tip
   if (recommendations.length === 0) {
     recommendations.push({
       title: 'Maintain Excellence',
@@ -373,7 +347,6 @@ app.post('/end-conversation', (req, res) => {
     });
   }
   
-  // Add a personalized recommendation
   const lowestMetric = metrics.reduce((prev, current) => (prev.score < current.score) ? prev : current);
   if (lowestMetric.score < 75 && recommendations.length < 3) {
     recommendations.push({
@@ -382,7 +355,6 @@ app.post('/end-conversation', (req, res) => {
     });
   }
   
-  // Clean up session
   delete conversationHistories[sessionId];
   
   res.json({
@@ -411,34 +383,33 @@ app.post('/text-to-speech', async (req, res) => {
 
     const { EdgeTTS } = await import('node-edge-tts');
 
-    // Map personas to Microsoft Edge neural voices with appropriate settings
     const voiceConfig = {
       Angry: {
-        voice: 'en-US-GuyNeural', // Deep, assertive male
+        voice: 'en-US-GuyNeural',
         rate: '+15%',
         pitch: '-5Hz',
         volume: '+0%'
       },
       Polite: {
-        voice: 'en-US-AriaNeural', // Calm, professional female
+        voice: 'en-US-AriaNeural',
         rate: '+0%',
         pitch: '+0Hz',
         volume: '+0%'
       },
       Impatient: {
-        voice: 'en-GB-RyanNeural', // Fast, clipped British male
+        voice: 'en-GB-RyanNeural',
         rate: '+25%',
         pitch: '+5Hz',
         volume: '+0%'
       },
       Confused: {
-        voice: 'en-US-JennyNeural', // Gentle, hesitant female
+        voice: 'en-US-JennyNeural',
         rate: '-10%',
         pitch: '+5Hz',
         volume: '-10%'
       },
       VIP: {
-        voice: 'en-US-GuyNeural', // Professional male
+        voice: 'en-US-GuyNeural',
         rate: '+0%',
         pitch: '+0Hz',
         volume: '+0%'
@@ -447,7 +418,6 @@ app.post('/text-to-speech', async (req, res) => {
 
     const config = voiceConfig[persona] || voiceConfig.Polite;
 
-    // Generate speech using Microsoft Edge TTS
     const tts = new EdgeTTS({
       voice: config.voice,
       lang: 'en-US',
@@ -457,18 +427,14 @@ app.post('/text-to-speech', async (req, res) => {
       volume: config.volume
     });
 
-    // Generate audio to temporary file
     const tempFile = `/tmp/tts_${Date.now()}.mp3`;
     await tts.ttsPromise(text, tempFile);
 
-    // Read file and stream back to client
     const fs = await import('fs/promises');
     const audioBuffer = await fs.readFile(tempFile);
     
-    // Clean up temp file
     await fs.unlink(tempFile);
 
-    // Stream audio back to client
     res.set('Content-Type', 'audio/mpeg');
     res.send(audioBuffer);
 
