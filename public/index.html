@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>du Customer Simulation Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'du-blue': '#0073CF',
+                        'du-cyan': '#00ADEF',
+                        'du-red': '#D71920',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            transition: background-color 0.3s ease;
+        }
+
+        .dark body {
+            background: #0f172a;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 115, 207, 0.3); }
+            50% { box-shadow: 0 0 30px rgba(0, 115, 207, 0.6); }
+        }
+
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .animate-slideUp {
+            animation: slideUp 0.6s ease-out;
+        }
+
+        .mode-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 2px solid transparent;
+        }
+
+        .mode-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 115, 207, 0.15);
+            border-color: #0073CF;
+        }
+
+        .persona-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .persona-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0073CF, #00ADEF);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+        }
+
+        .persona-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .persona-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .persona-card.selected {
+            border-color: #0073CF;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+
+        .persona-card.selected::before {
+            transform: scaleX(1);
+        }
+
+        .avatar-glow {
+            box-shadow: 0 0 0 3px rgba(0, 115, 207, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .avatar-glow.active {
+            animation: pulse-glow 2s infinite;
+        }
+
+        .message-bubble {
+            animation: fadeIn 0.3s ease-out;
+            max-width: 70%;
+            position: relative;
+            z-index: 1;
+        }
+
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #94a3b8;
+            border-radius: 50%;
+            animation: typingDot 1.4s infinite;
+        }
+
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingDot {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-8px); }
+        }
+
+        @keyframes highlight-pulse {
+            0%, 100% { background-color: transparent; }
+            50% { background-color: rgba(0, 115, 207, 0.1); }
+        }
+
+        .scenario-highlight {
+            animation: highlight-pulse 2s ease-in-out 3;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #0073CF 0%, #00ADEF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #0073CF 0%, #00ADEF 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 30px rgba(0, 115, 207, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        @keyframes watermarkFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 0.07; transform: scale(1); }
+        }
+
+        .watermark {
+            pointer-events: none;
+            font-size: 160px;
+            font-weight: 800;
+            color: #0073CF;
+            z-index: 0;
+            user-select: none;
+            transition: all 0.4s ease;
+        }
+
+        .idle .watermark {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            opacity: 0.07;
+            animation: watermarkFadeIn 0.8s ease-in-out;
+        }
+
+        .active .watermark {
+            position: absolute;
+            bottom: 100px;
+            right: 40px;
+            opacity: 0.06;
+        }
+
+        .dark .watermark {
+            opacity: 0.06;
+        }
+
+        .dark.idle .watermark {
+            opacity: 0.05;
+            animation: watermarkFadeIn 0.8s ease-in-out;
+        }
+
+        .dark.active .watermark {
+            opacity: 0.05;
+        }
+
+        @media (max-width: 1024px) {
+            .watermark {
+                font-size: 100px;
+            }
+            
+            .idle .watermark {
+                bottom: 28px;
+                right: 28px;
+            }
+            
+            .active .watermark {
+                bottom: 90px;
+                right: 32px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .watermark {
+                font-size: 70px;
+            }
+            
+            .idle .watermark {
+                bottom: 24px;
+                right: 24px;
+            }
+            
+            .active .watermark {
+                bottom: 80px;
+                right: 28px;
+            }
+        }
+
+        .help-float {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+
+        .help-float:hover {
+            transform: scale(1.1);
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 70px;
+            right: 0;
+            background: #1e293b;
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .help-float:hover .tooltip {
+            opacity: 1;
+        }
+
+        .dark-toggle {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-slate-900">
+
+    <div id="modeSelectionModal" class="fixed inset-0 bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center z-50">
+        <div class="text-center max-w-4xl px-6 animate-fadeIn">
+            <div class="mb-8 flex justify-center">
+                <div class="bg-du-blue text-white w-20 h-20 rounded-2xl flex items-center justify-center text-3xl font-bold shadow-2xl">
+                    du
+                </div>
+            </div>
+            <h1 class="text-5xl font-bold text-white mb-4">Customer Simulation Portal</h1>
+            <p class="text-xl text-slate-300 mb-12">Experience Real Conversations. Sharpen Your Service Skills.</p>
+            
+            <h2 class="text-2xl font-semibold text-white mb-8">Select Simulation Mode</h2>
+            
+            <div class="grid grid-cols-2 gap-8">
+                <div onclick="selectMode('voice')" class="mode-card bg-white dark:bg-slate-800 rounded-2xl p-10 cursor-pointer">
+                    <svg class="w-20 h-20 mx-auto mb-6 text-du-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                    </svg>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Voice Simulation</h3>
+                    <p class="text-gray-600 dark:text-slate-400">AI-powered voice conversations</p>
+                </div>
+
+                <div onclick="selectMode('text')" class="mode-card bg-white dark:bg-slate-800 rounded-2xl p-10 cursor-pointer">
+                    <svg class="w-20 h-20 mx-auto mb-6 text-du-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                    </svg>
+                    <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-2">Text Simulation</h3>
+                    <p class="text-gray-600 dark:text-slate-400">Message-based customer service</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainInterface" class="hidden min-h-screen flex flex-col idle">
+        <header class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-8 py-4 flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-4">
+                <div class="bg-du-blue text-white w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold">
+                    du
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900 dark:text-white">Customer Simulation Portal</h1>
+                    <p id="modeIndicator" class="text-sm text-gray-500 dark:text-slate-400"></p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleDarkMode()" class="dark-toggle p-2 rounded-lg bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600">
+                    <svg id="darkIcon" class="w-5 h-5 text-gray-700 dark:text-slate-300 hidden dark:block" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                    </svg>
+                    <svg id="lightIcon" class="w-5 h-5 text-gray-700 dark:text-slate-300 block dark:hidden" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden">
+            <aside class="w-80 bg-white dark:bg-slate-800 border-r border-gray-200 dark:border-slate-700 flex flex-col" style="height: calc(100vh - 125px);">
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-du-blue" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"></path>
+                            </svg>
+                            Customer Personas
+                        </h2>
+                        <div id="personaList" class="space-y-3"></div>
+                    </div>
+
+                    <div class="mb-8">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-du-cyan" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+                            </svg>
+                            Business Scenarios
+                        </h2>
+                        <div id="scenarioList" class="space-y-3"></div>
+                    </div>
+                </div>
+                
+                <div class="p-6 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700">
+                    <button id="startButton" class="w-full btn-primary text-white py-4 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                        </svg>
+                        Start Simulation
+                    </button>
+                </div>
+            </aside>
+
+            <main class="flex-1 flex flex-col bg-gray-50 dark:bg-slate-900 relative overflow-hidden">
+                <div class="watermark">du</div>
+                
+                <div id="welcomeScreen" class="flex-1 flex items-center justify-center p-12 relative z-10">
+                    <div class="text-center max-w-2xl animate-slideUp">
+                        <div class="mb-8">
+                            <svg class="w-24 h-24 mx-auto text-du-blue opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                            </svg>
+                        </div>
+                        <h2 class="text-4xl font-bold gradient-text mb-4">Ready to Begin?</h2>
+                        <p class="text-xl text-gray-600 dark:text-slate-400 mb-8">Select a customer persona and business scenario from the left panel to start your simulation</p>
+                        <div class="flex items-center justify-center gap-6 text-sm text-gray-500 dark:text-slate-500">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-du-blue rounded-full"></div>
+                                <span>AI-Powered</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-du-cyan rounded-full"></div>
+                                <span>Real-time Feedback</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-du-blue rounded-full"></div>
+                                <span>Performance Analytics</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="chatArea" class="hidden flex flex-col relative z-10" style="height: calc(100vh - 125px);">
+                    <div id="chatHeader" class="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 flex-shrink-0">
+                        <div class="flex items-center gap-4">
+                            <img id="customerAvatar" class="w-12 h-12 rounded-full avatar-glow" src="" alt="">
+                            <div class="flex-1">
+                                <h3 id="customerName" class="font-semibold text-gray-900 dark:text-white"></h3>
+                                <p id="scenarioName" class="text-sm text-gray-500 dark:text-slate-400"></p>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <div id="voiceStatus" class="hidden px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2">
+                                    <span id="voiceStatusIcon"></span>
+                                    <span id="voiceStatusText"></span>
+                                </div>
+                                <div id="sessionStatus" class="px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm font-medium flex items-center gap-2">
+                                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                    Active
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="chatContainer" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+
+                    <div id="inputArea" class="bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 p-6 flex-shrink-0">
+                        <div class="flex gap-3 mb-3">
+                            <input type="text" id="userInput" placeholder="Type your response..." 
+                                class="flex-1 px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-du-blue focus:border-transparent dark:bg-slate-700 dark:text-white transition-all" />
+                            <button id="voiceButton" class="hidden bg-du-cyan hover:bg-du-blue text-white p-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                                </svg>
+                            </button>
+                            <button id="sendButton" class="btn-primary text-white px-8 py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"></path>
+                                </svg>
+                                Send
+                            </button>
+                        </div>
+                        <div class="text-center flex items-center justify-center gap-4">
+                            <button id="switchModeButton" class="hidden text-du-blue hover:bg-blue-50 dark:hover:bg-blue-900/20 px-4 py-2 rounded-lg transition-all text-sm font-medium">
+                                Switch to <span id="switchModeText"></span> Mode
+                            </button>
+                            <button id="endButton" class="text-du-red hover:bg-red-50 dark:hover:bg-red-900/20 px-6 py-2 rounded-lg transition-all text-sm font-medium">
+                                End Conversation & View Analytics
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <footer class="bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 py-4">
+            <div class="text-center">
+                <p class="text-sm text-gray-600 dark:text-slate-400">
+                    <span>Designed by </span>
+                    <span class="font-semibold text-gray-900 dark:text-white">Maryam Chohan</span>
+                    <span class="mx-2">|</span>
+                    <span class="text-du-blue font-medium">du Learning Innovation Initiative</span>
+                </p>
+            </div>
+        </footer>
+    </div>
+
+    <div id="analyticsModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-y-auto shadow-2xl animate-slideUp">
+            <div id="analyticsContent"></div>
+        </div>
+    </div>
+
+    <div class="help-float">
+        <div class="tooltip">Need help? Click for tips</div>
+        <button class="w-14 h-14 bg-du-blue text-white rounded-full shadow-lg flex items-center justify-center hover:shadow-xl">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        let simulationMode = null;
+        let selectedPersona = null;
+        let selectedScenario = null;
+        let sessionId = null;
+        let conversationActive = false;
+        let currentAvatar = null;
+        let isDarkMode = false;
+
+        const personas = {
+            Angry: { 
+                name: 'Angry Customer', 
+                description: 'Frustrated and demanding immediate resolution', 
+                avatar: 'angry.png',
+                iconSvg: '<svg class="w-8 h-8 text-du-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>'
+            },
+            Confused: { 
+                name: 'Confused Customer', 
+                description: 'Uncertain and needs clear guidance', 
+                avatar: 'confused.png',
+                iconSvg: '<svg class="w-8 h-8 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+            },
+            Polite: { 
+                name: 'Polite Customer', 
+                description: 'Respectful and patient, seeking understanding', 
+                avatar: 'polite.png',
+                iconSvg: '<svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"></path></svg>'
+            },
+            Impatient: { 
+                name: 'Impatient Customer', 
+                description: 'In a hurry, wants quick solutions', 
+                avatar: 'impatient.png',
+                iconSvg: '<svg class="w-8 h-8 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+            }
+        };
+
+        const scenarios = {
+            '5g-rollout': { 
+                name: '5G Rollout Delays', 
+                description: 'Customer experiencing delays in promised 5G service activation',
+                iconSvg: '<svg class="w-7 h-7 text-du-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0"></path></svg>'
+            },
+            'corporate-discount': { 
+                name: 'Corporate Discount Negotiations', 
+                description: 'Business client negotiating bulk service discounts',
+                iconSvg: '<svg class="w-7 h-7 text-du-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>'
+            },
+            'service-downtime': { 
+                name: 'Service Downtime Complaints', 
+                description: 'Customer facing repeated internet/mobile service interruptions',
+                iconSvg: '<svg class="w-7 h-7 text-du-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>'
+            },
+            'device-tradein': { 
+                name: 'Device Trade-In Issues', 
+                description: 'Customer experiencing problems with device trade-in program',
+                iconSvg: '<svg class="w-7 h-7 text-du-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>'
+            },
+            'enterprise-contract': { 
+                name: 'Enterprise Contract Renewals', 
+                description: 'Large enterprise client reviewing contract terms',
+                iconSvg: '<svg class="w-7 h-7 text-du-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
+            }
+        };
+
+        function selectMode(mode) {
+            simulationMode = mode;
+            document.getElementById('modeSelectionModal').classList.add('hidden');
+            document.getElementById('mainInterface').classList.remove('hidden');
+            document.getElementById('modeIndicator').textContent = mode === 'voice' ? 'Voice Simulation Mode' : 'Text Simulation Mode';
+            loadPersonas();
+            loadScenarios();
+        }
+
+        function loadPersonas() {
+            const personaList = document.getElementById('personaList');
+            personaList.innerHTML = Object.entries(personas).map(([key, persona]) => `
+                <div onclick="selectPersona('${key}')" class="persona-card bg-white dark:bg-slate-700 rounded-xl p-4 border-2 border-gray-200 dark:border-slate-600 cursor-pointer" data-persona="${key}">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0">${persona.iconSvg}</div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900 dark:text-white text-sm">${persona.name}</h3>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">${persona.description}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadScenarios() {
+            const scenarioList = document.getElementById('scenarioList');
+            scenarioList.innerHTML = Object.entries(scenarios).map(([key, scenario]) => `
+                <div onclick="selectScenario('${key}')" class="persona-card bg-white dark:bg-slate-700 rounded-xl p-4 border-2 border-gray-200 dark:border-slate-600 cursor-pointer" data-scenario="${key}">
+                    <div class="flex items-center gap-3">
+                        <div class="flex-shrink-0">${scenario.iconSvg}</div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-gray-900 dark:text-white text-sm">${scenario.name}</h3>
+                            <p class="text-xs text-gray-500 dark:text-slate-400">${scenario.description}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectPersona(persona) {
+            selectedPersona = persona;
+            document.querySelectorAll('[data-persona]').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`[data-persona="${persona}"]`).classList.add('selected');
+            
+            setTimeout(() => {
+                const scenarioSection = document.getElementById('scenarioList')?.parentElement;
+                if (scenarioSection) {
+                    scenarioSection.classList.add('scenario-highlight');
+                    scenarioSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    setTimeout(() => {
+                        scenarioSection.classList.remove('scenario-highlight');
+                    }, 6000);
+                }
+            }, 300);
+            
+            checkStartButton();
+        }
+
+        function selectScenario(scenario) {
+            selectedScenario = scenario;
+            document.querySelectorAll('[data-scenario]').forEach(el => el.classList.remove('selected'));
+            document.querySelector(`[data-scenario="${scenario}"]`).classList.add('selected');
+            
+            const scenarioSection = document.getElementById('scenarioList')?.parentElement;
+            if (scenarioSection) {
+                scenarioSection.classList.remove('scenario-highlight');
+            }
+            
+            checkStartButton();
+        }
+
+        function checkStartButton() {
+            const startButton = document.getElementById('startButton');
+            const isReady = selectedPersona && selectedScenario;
+            startButton.disabled = !isReady;
+            
+            if (isReady) {
+                startButton.classList.add('animate-pulse');
+                setTimeout(() => startButton.classList.remove('animate-pulse'), 2000);
+            }
+        }
+
+        document.getElementById('startButton').addEventListener('click', startSimulation);
+
+        async function startSimulation() {
+            if (!selectedPersona || !selectedScenario) return;
+
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            const chatArea = document.getElementById('chatArea');
+            const mainInterface = document.getElementById('mainInterface');
+            
+            mainInterface.classList.remove('idle');
+            mainInterface.classList.add('active');
+            
+            welcomeScreen.classList.add('hidden');
+            chatArea.classList.remove('hidden');
+
+            const persona = personas[selectedPersona];
+            const scenario = scenarios[selectedScenario];
+
+            currentAvatar = `/avatars/${persona.avatar}`;
+            document.getElementById('customerAvatar').src = currentAvatar;
+            document.getElementById('customerAvatar').classList.add('active');
+            document.getElementById('customerName').textContent = persona.name;
+            document.getElementById('scenarioName').textContent = scenario.name;
+
+            conversationActive = true;
+            sessionId = `${selectedPersona}-${selectedScenario}-${Date.now()}`;
+
+            // Configure voice/text mode controls
+            const switchModeButton = document.getElementById('switchModeButton');
+            switchModeButton.classList.remove('hidden');
+            
+            if (simulationMode === 'voice') {
+                document.getElementById('userInput').classList.add('hidden');
+                document.getElementById('sendButton').classList.add('hidden');
+                document.getElementById('voiceButton').classList.remove('hidden');
+                document.getElementById('voiceButton').classList.remove('bg-gray-400');
+                document.getElementById('voiceButton').classList.add('bg-du-cyan');
+                document.getElementById('switchModeText').textContent = 'Text';
+            } else {
+                document.getElementById('userInput').classList.remove('hidden');
+                document.getElementById('sendButton').classList.remove('hidden');
+                document.getElementById('voiceButton').classList.add('hidden');
+                document.getElementById('switchModeText').textContent = 'Voice';
+            }
+
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.innerHTML = '';
+            
+            requestAnimationFrame(() => {
+                chatContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+
+            addTypingIndicator();
+
+            try {
+                // Get initial AI greeting
+                const response = await fetch('/ask-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '',
+                        persona: selectedPersona,
+                        scenario: selectedScenario,
+                        sessionId: sessionId,
+                        isFirstMessage: true
+                    })
+                });
+
+                const data = await response.json();
+                removeTypingIndicator();
+
+                const initialMessage = data.error ? 'Hello, I need assistance with my service.' : data.response;
+                addMessage(initialMessage, 'ai');
+                
+                // If voice mode, enable continuous listening and play initial message
+                if (simulationMode === 'voice') {
+                    continuousVoiceActive = true;  // Enable continuous mode
+                    await playTTS(initialMessage, selectedPersona);
+                    // Continuous listening will auto-start after TTS finishes
+                }
+            } catch (error) {
+                removeTypingIndicator();
+                const fallbackMessage = 'Hello, I need assistance with my service.';
+                addMessage(fallbackMessage, 'ai');
+                
+                if (simulationMode === 'voice') {
+                    continuousVoiceActive = true;  // Enable continuous mode
+                    await playTTS(fallbackMessage, selectedPersona);
+                }
+            }
+        }
+
+        function addMessage(text, sender) {
+            const chatContainer = document.getElementById('chatContainer');
+            const isAI = sender === 'ai';
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${isAI ? 'justify-start' : 'justify-end'}`;
+            
+            // Process text to convert <strong> tags for emphasis (no asterisks)
+            // Text comes from backend already formatted with <strong> tags where needed
+            const formattedText = text;
+            
+            messageDiv.innerHTML = `
+                <div class="message-bubble ${isAI ? 'bg-gray-100 dark:bg-slate-700' : 'bg-gradient-to-r from-du-blue to-du-cyan text-white'} rounded-2xl px-6 py-3 ${isAI ? 'rounded-tl-none' : 'rounded-tr-none'}">
+                    <p class="${isAI ? 'text-gray-900 dark:text-white' : 'text-white'}">${formattedText}</p>
+                </div>
+            `;
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function addTypingIndicator() {
+            const chatContainer = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.id = 'typingIndicator';
+            typingDiv.className = 'flex justify-start';
+            typingDiv.innerHTML = `
+                <div class="bg-gray-100 dark:bg-slate-700 rounded-2xl rounded-tl-none px-6 py-4">
+                    <div class="typing-indicator">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        document.getElementById('userInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+
+        async function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+
+            if (!message || !conversationActive) return;
+
+            addMessage(message, 'user');
+            input.value = '';
+            document.getElementById('sendButton').disabled = true;
+
+            addTypingIndicator();
+
+            try {
+                const response = await fetch('/ask-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        persona: selectedPersona,
+                        scenario: selectedScenario,
+                        sessionId: sessionId,
+                        isFirstMessage: false
+                    })
+                });
+
+                const data = await response.json();
+                removeTypingIndicator();
+
+                if (data.error) {
+                    addMessage('I see. Can you help me with this?', 'ai');
+                } else {
+                    addMessage(data.response, 'ai');
+                }
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('I understand. Please continue.', 'ai');
+            } finally {
+                document.getElementById('sendButton').disabled = false;
+            }
+        }
+
+        // ========== OPTIMIZED CONTINUOUS VOICE SIMULATION MODE ==========
+        let recognition = null;
+        let isListening = false;
+        let isProcessing = false;
+        let isSpeaking = false;
+        let currentAudio = null;
+        let continuousVoiceActive = false;
+        let speechTimeout = null;
+        let lastTranscript = '';
+
+        // Initialize Web Speech API with optimized settings
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            
+            // Optimized settings for natural conversation
+            recognition.continuous = true;
+            recognition.interimResults = true;  // Enable interim results for pause detection
+            recognition.lang = 'en-US';
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                if (continuousVoiceActive && !isProcessing && !isSpeaking) {
+                    isListening = true;
+                    updateVoiceStatus('listening');
+                }
+            };
+
+            recognition.onresult = (event) => {
+                // Prevent processing if AI is thinking or speaking
+                if (isProcessing || isSpeaking || !continuousVoiceActive) return;
+
+                const lastResultIndex = event.results.length - 1;
+                const result = event.results[lastResultIndex];
+                const transcript = result[0].transcript.trim();
+
+                // Clear any existing timeout
+                if (speechTimeout) {
+                    clearTimeout(speechTimeout);
+                    speechTimeout = null;
+                }
+
+                // Only process final results to avoid partial inputs
+                if (result.isFinal && transcript && transcript !== lastTranscript) {
+                    lastTranscript = transcript;
+                    
+                    // Wait 500ms to confirm user finished speaking
+                    speechTimeout = setTimeout(() => {
+                        if (continuousVoiceActive && !isProcessing && !isSpeaking) {
+                            // Stop listening and process input
+                            safeStopRecognition();
+                            processVoiceInput(transcript);
+                        }
+                    }, 500);
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Speech recognition error:', event.error);
+                
+                // Handle specific errors
+                if (event.error === 'no-speech') {
+                    // No speech detected, just restart if active
+                    if (continuousVoiceActive && !isProcessing && !isSpeaking && conversationActive) {
+                        safeRestartRecognition();
+                    }
+                } else if (event.error === 'aborted') {
+                    // User or system intentionally stopped
+                    isListening = false;
+                } else {
+                    // Other errors - try to recover
+                    isListening = false;
+                    if (continuousVoiceActive && !isProcessing && !isSpeaking && conversationActive) {
+                        setTimeout(() => safeRestartRecognition(), 1000);
+                    }
+                }
+            };
+
+            recognition.onend = () => {
+                isListening = false;
+                
+                // Only auto-restart if not processing or speaking
+                if (continuousVoiceActive && !isProcessing && !isSpeaking && conversationActive) {
+                    setTimeout(() => safeRestartRecognition(), 100);
+                }
+            };
+        }
+
+        // Safely stop recognition without errors
+        function safeStopRecognition() {
+            if (recognition && isListening) {
+                try {
+                    recognition.stop();
+                    isListening = false;
+                } catch (e) {
+                    console.error('Error stopping recognition:', e);
+                }
+            }
+        }
+
+        // Safely restart recognition
+        function safeRestartRecognition() {
+            if (!recognition || !continuousVoiceActive || isProcessing || isSpeaking || !conversationActive) {
+                return;
+            }
+
+            if (isListening) {
+                safeStopRecognition();
+                setTimeout(() => {
+                    if (continuousVoiceActive && !isProcessing && !isSpeaking) {
+                        startRecognition();
+                    }
+                }, 100);
+            } else {
+                startRecognition();
+            }
+        }
+
+        // Start recognition safely
+        function startRecognition() {
+            if (!recognition || isListening || isProcessing || isSpeaking || !continuousVoiceActive) {
+                return;
+            }
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Error starting recognition:', e);
+                // If already started, stop and retry
+                if (e.message && e.message.includes('already started')) {
+                    safeStopRecognition();
+                    setTimeout(() => {
+                        if (continuousVoiceActive && !isProcessing && !isSpeaking) {
+                            startRecognition();
+                        }
+                    }, 100);
+                }
+            }
+        }
+
+        function updateVoiceStatus(status) {
+            const voiceStatus = document.getElementById('voiceStatus');
+            const voiceStatusIcon = document.getElementById('voiceStatusIcon');
+            const voiceStatusText = document.getElementById('voiceStatusText');
+
+            voiceStatus.classList.remove('hidden');
+
+            if (status === 'listening') {
+                voiceStatus.className = 'flex px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-sm font-medium items-center gap-2';
+                voiceStatusIcon.textContent = '🎙';
+                voiceStatusText.textContent = 'Listening...';
+            } else if (status === 'processing') {
+                voiceStatus.className = 'flex px-4 py-2 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-full text-sm font-medium items-center gap-2';
+                voiceStatusIcon.textContent = '⏳';
+                voiceStatusText.textContent = 'Processing...';
+            } else if (status === 'responding') {
+                voiceStatus.className = 'flex px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded-full text-sm font-medium items-center gap-2';
+                voiceStatusIcon.textContent = '🗣';
+                voiceStatusText.textContent = 'Responding...';
+            }
+        }
+
+        function hideVoiceStatus() {
+            document.getElementById('voiceStatus').classList.add('hidden');
+        }
+
+        // Process voice input with precise timing control
+        async function processVoiceInput(message) {
+            if (!message || !conversationActive || isProcessing || isSpeaking) return;
+
+            // Mark as processing to prevent overlapping inputs
+            isProcessing = true;
+            updateVoiceStatus('processing');
+
+            // Display learner's transcribed message
+            addMessage(message, 'user');
+            addTypingIndicator();
+
+            try {
+                // Send to OpenRouter API for AI response
+                const response = await fetch('/ask-client', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        persona: selectedPersona,
+                        scenario: selectedScenario,
+                        sessionId: sessionId,
+                        isFirstMessage: false
+                    })
+                });
+
+                const data = await response.json();
+                removeTypingIndicator();
+
+                // Get AI response text
+                const aiResponse = data.error ? 'I see. Can you help me with this?' : data.response;
+                
+                // Display AI's text response for accessibility
+                addMessage(aiResponse, 'ai');
+
+                // Mark processing complete, start speaking
+                isProcessing = false;
+                
+                // Convert to speech and play (auto-restarts listening when complete)
+                await playTTS(aiResponse, selectedPersona);
+
+            } catch (error) {
+                console.error('Voice processing error:', error);
+                removeTypingIndicator();
+                
+                const fallbackResponse = 'I understand. Please continue.';
+                addMessage(fallbackResponse, 'ai');
+                
+                isProcessing = false;
+                await playTTS(fallbackResponse, selectedPersona);
+            }
+        }
+
+        // Convert AI text to speech using ElevenLabs API
+        async function playTTS(text, persona) {
+            // Stop any currently playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+
+            // Mark AI as speaking (listener is paused)
+            isSpeaking = true;
+            updateVoiceStatus('responding');
+
+            try {
+                // Call ElevenLabs TTS API with persona-specific voice
+                const response = await fetch('/text-to-speech', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, persona })
+                });
+
+                if (!response.ok) throw new Error('TTS failed');
+
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                currentAudio = new Audio(audioUrl);
+
+                // Precise end-of-speech detection using multiple audio events
+                const handleAudioEnd = () => {
+                    isSpeaking = false;
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudio = null;
+                    
+                    // Immediately restart listening after AI finishes (no lag)
+                    if (continuousVoiceActive && conversationActive && !isProcessing) {
+                        setTimeout(() => {
+                            if (continuousVoiceActive && !isListening && !isProcessing) {
+                                startRecognition();
+                            }
+                        }, 200);
+                    } else {
+                        hideVoiceStatus();
+                    }
+                };
+
+                // Handle all audio completion events
+                currentAudio.onended = handleAudioEnd;
+                currentAudio.onerror = (e) => {
+                    console.error('Audio playback error:', e);
+                    handleAudioEnd();
+                };
+
+                // Play AI voice response automatically
+                await currentAudio.play();
+                
+            } catch (error) {
+                console.error('TTS error:', error);
+                isSpeaking = false;
+                
+                // Auto-restart listening even if TTS fails (graceful recovery)
+                if (continuousVoiceActive && conversationActive && !isProcessing) {
+                    setTimeout(() => {
+                        if (continuousVoiceActive && !isListening && !isProcessing) {
+                            startRecognition();
+                        }
+                    }, 500);
+                } else {
+                    hideVoiceStatus();
+                }
+            }
+        }
+
+        // Start continuous voice mode with optimized state management
+        function startContinuousVoice() {
+            if (!recognition) {
+                alert('Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+                return;
+            }
+
+            continuousVoiceActive = true;
+            lastTranscript = '';  // Reset transcript tracker
+            
+            // Clear any pending speech timeouts
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            
+            // Only start if not already processing or speaking
+            if (!isListening && !isProcessing && !isSpeaking && conversationActive) {
+                startRecognition();
+            }
+        }
+
+        // Stop continuous voice mode with complete cleanup
+        function stopContinuousVoice() {
+            continuousVoiceActive = false;
+            
+            // Clear speech detection timeout
+            if (speechTimeout) {
+                clearTimeout(speechTimeout);
+                speechTimeout = null;
+            }
+            
+            // Stop listening
+            safeStopRecognition();
+            
+            // Stop any playing audio
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+                currentAudio = null;
+            }
+            
+            // Reset all states
+            isListening = false;
+            isProcessing = false;
+            isSpeaking = false;
+            lastTranscript = '';
+            hideVoiceStatus();
+        }
+
+        // Switch between Text and Voice simulation modes
+        function switchSimulationMode() {
+            if (simulationMode === 'voice') {
+                // Switch to text mode
+                simulationMode = 'text';
+                stopContinuousVoice();
+                
+                document.getElementById('userInput').classList.remove('hidden');
+                document.getElementById('sendButton').classList.remove('hidden');
+                document.getElementById('voiceButton').classList.add('hidden');
+                document.getElementById('switchModeText').textContent = 'Voice';
+                document.getElementById('modeIndicator').textContent = 'Text Simulation Mode';
+            } else {
+                // Switch to voice mode
+                simulationMode = 'voice';
+                
+                document.getElementById('userInput').classList.add('hidden');
+                document.getElementById('sendButton').classList.add('hidden');
+                document.getElementById('voiceButton').classList.remove('hidden');
+                document.getElementById('voiceButton').classList.remove('bg-gray-400');
+                document.getElementById('voiceButton').classList.add('bg-du-cyan');
+                document.getElementById('switchModeText').textContent = 'Text';
+                document.getElementById('modeIndicator').textContent = 'Voice Simulation Mode';
+                
+                // Auto-start continuous listening
+                startContinuousVoice();
+            }
+        }
+
+        // Manual mic button toggle (optional control)
+        function toggleMicButton() {
+            if (!recognition) {
+                alert('Voice recognition is not supported in your browser. Please use Chrome, Edge, or Safari.');
+                return;
+            }
+
+            if (continuousVoiceActive) {
+                // Stop listening
+                stopContinuousVoice();
+                document.getElementById('voiceButton').classList.remove('bg-du-cyan');
+                document.getElementById('voiceButton').classList.add('bg-gray-400');
+            } else {
+                // Start listening
+                startContinuousVoice();
+                document.getElementById('voiceButton').classList.remove('bg-gray-400');
+                document.getElementById('voiceButton').classList.add('bg-du-cyan');
+            }
+        }
+
+        // Event listeners
+        document.getElementById('voiceButton').addEventListener('click', toggleMicButton);
+        document.getElementById('switchModeButton').addEventListener('click', switchSimulationMode);
+        document.getElementById('endButton').addEventListener('click', endConversation);
+
+        async function endConversation() {
+            if (!conversationActive) return;
+
+            conversationActive = false;
+            
+            // Stop continuous voice if active
+            stopContinuousVoice();
+            
+            document.getElementById('sendButton').disabled = true;
+            document.getElementById('endButton').disabled = true;
+
+            try {
+                const response = await fetch('/end-conversation', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sessionId: sessionId,
+                        persona: selectedPersona,
+                        scenario: selectedScenario
+                    })
+                });
+
+                const data = await response.json();
+                showAnalytics(data);
+            } catch (error) {
+                console.error('Error ending conversation:', error);
+                alert('Unable to generate analytics. Please try again.');
+            }
+        }
+
+        function showAnalytics(data) {
+            const metrics = data.metrics || [];
+            const recommendations = data.recommendations || [];
+            const overallScore = data.overallScore || 0;
+
+            const metricsHTML = metrics.map(metric => `
+                <div class="text-center">
+                    <div class="text-sm font-medium text-gray-600 dark:text-slate-400 mb-3">${metric.name}</div>
+                    <div class="relative w-32 h-32 mx-auto mb-3">
+                        <svg class="transform -rotate-90 w-32 h-32">
+                            <circle cx="64" cy="64" r="56" stroke="#E5E7EB" stroke-width="8" fill="none"></circle>
+                            <circle cx="64" cy="64" r="56" stroke="${metric.score >= 75 ? '#0073CF' : metric.score >= 50 ? '#F59E0B' : '#D71920'}" 
+                                stroke-width="8" fill="none" stroke-dasharray="351.86" 
+                                stroke-dashoffset="${351.86 - (metric.score / 100) * 351.86}" stroke-linecap="round"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-3xl font-bold text-gray-900 dark:text-white">${metric.score}</span>
+                            <span class="text-xs text-gray-500 dark:text-slate-400">out of 100</span>
+                        </div>
+                    </div>
+                    <div class="text-xs px-3 py-1 rounded-full inline-block ${metric.score >= 75 ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300' : metric.score >= 50 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300' : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'}">
+                        ${metric.score >= 75 ? 'Strong' : metric.score >= 50 ? 'Developing' : 'Needs Work'}
+                    </div>
+                </div>
+            `).join('');
+
+            const recommendationsHTML = recommendations.map((rec, i) => `
+                <div class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-slate-700 rounded-xl">
+                    <div class="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-du-blue to-du-cyan text-white rounded-full flex items-center justify-center font-bold text-sm">
+                        ${i + 1}
+                    </div>
+                    <div class="flex-1">
+                        <div class="font-semibold text-gray-900 dark:text-white mb-1">${rec.title}</div>
+                        <div class="text-sm text-gray-600 dark:text-slate-400">${rec.action}</div>
+                    </div>
+                </div>
+            `).join('');
+
+            const content = `
+                <div class="p-8">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold gradient-text mb-2">Performance Analytics</h2>
+                        <p class="text-gray-600 dark:text-slate-400">Your conversation performance breakdown</p>
+                    </div>
+
+                    <div class="mb-8 text-center">
+                        <div class="inline-block bg-gradient-to-r from-du-blue to-du-cyan text-white rounded-2xl px-10 py-8 shadow-xl">
+                            <div class="text-sm font-medium mb-1 opacity-90">Overall Performance</div>
+                            <div class="text-6xl font-bold">${overallScore}%</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-6 mb-8">
+                        ${metricsHTML}
+                    </div>
+
+                    <div class="border-t border-gray-200 dark:border-slate-700 pt-8">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                            <svg class="w-6 h-6 text-du-blue" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path>
+                                <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd"></path>
+                            </svg>
+                            Actionable Recommendations
+                        </h3>
+                        <div class="space-y-3">
+                            ${recommendationsHTML}
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex gap-4">
+                        <button onclick="closeAnalytics()" class="flex-1 bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-white py-3 px-6 rounded-xl hover:bg-gray-300 dark:hover:bg-slate-600 transition-all font-semibold">
+                            Close
+                        </button>
+                        <button onclick="startNewSimulation()" class="flex-1 btn-primary text-white py-3 px-6 rounded-xl font-semibold">
+                            Start New Simulation
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('analyticsContent').innerHTML = content;
+            document.getElementById('analyticsModal').classList.remove('hidden');
+        }
+
+        function closeAnalytics() {
+            document.getElementById('analyticsModal').classList.add('hidden');
+            location.reload();
+        }
+
+        function startNewSimulation() {
+            document.getElementById('analyticsModal').classList.add('hidden');
+            location.reload();
+        }
+
+        function toggleDarkMode() {
+            isDarkMode = !isDarkMode;
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+    </script>
+</body>
+</html>
